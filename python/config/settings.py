@@ -1,4 +1,8 @@
-# All ports, polling intervals, fault thresholds, confidence cutoffs
+"""
+Central configuration settings for the AI Detection system.
+Defines ports, thresholds, and intervals for all microservices.
+"""
+
 SERVER_PORTS = {"server1": 5001, "server2": 5002, "server3": 5003}
 MONITOR_INTERVAL_SECONDS = 5
 FAULT_PROBABILITY_RANGE = (0.0, 0.15)   # per-request random fault chance

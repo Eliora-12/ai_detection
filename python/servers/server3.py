@@ -1,3 +1,6 @@
+"""
+Server instance 3: Network Degradation Profile.
+"""
 from python.servers.base_server import BaseServer
 from python.config.settings import SERVER_PORTS
 

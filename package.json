@@ -6,7 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test:unit": "pytest tests/unit -v",
+    "test:integration": "pytest tests/integration -v --timeout=120",
+    "test:components": "jest"
   },
   "dependencies": {
     "@radix-ui/react-scroll-area": "^1.2.12",

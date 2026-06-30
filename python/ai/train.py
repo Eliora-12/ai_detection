@@ -1,37 +1,23 @@
-import json
-import os
-import pandas as pd
-import numpy as np
-from sklearn.ensemble import IsolationForest, RandomForestClassifier
-import joblib
-import sys
-
-# Add parent directory to path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from ai.features import extract_features
-
-MODEL_DIR = os.path.join(os.path.dirname(__file__), 'model')
-ANOMALY_MODEL_PATH = os.path.join(MODEL_DIR, 'anomaly_model.pkl')
-CLASSIFIER_MODEL_PATH = os.path.join(MODEL_DIR, 'fault_classifier.pkl')
+import os, pandas as pd, numpy as np, joblib
+from python.ai.features import extract_features
 
 def generate_dummy_data():
+    """Generates synthetic training data for Isolation Forest and Random Forest."""
     data = []
-    # Healthy
-    for _ in range(50):
-        history = [{"cpu": 0.1 + 0.05 * np.random.rand(), "memory": 0.2, "latency_ms": 50, "error_rate": 0, "label": "healthy"} for _ in range(10)]
-        data.append(history)
-    # Memory leak
-    for _ in range(20):
-        history = [{"cpu": 0.1, "memory": 0.2 + 0.05 * i, "latency_ms": 50, "error_rate": 0, "label": "memory_leak"} for i in range(10)]
-        data.append(history)
-    # CPU spike
-    for _ in range(20):
-        history = [{"cpu": 0.1 if i < 8 else 0.9, "memory": 0.2, "latency_ms": 50 if i < 8 else 500, "error_rate": 0, "label": "cpu_spike"} for i in range(10)]
-        data.append(history)
+    # Healthy: Low stable load, zero errors
+    for _ in range(100):
+        data.append([{"cpu": 0.05 + 0.05*np.random.rand(), "memory": 0.1, "latency_ms": 50, "error_rate": 0, "label": "healthy"}] * 10)
+    # Memory leak: memory climbs, error rate starts to rise
+    for _ in range(60):
+        data.append([{"cpu": 0.1, "memory": 0.1 + 0.09 * i, "latency_ms": 50 + 20 * i, "error_rate": 0.02 * i, "label": "memory_leak"} for i in range(10)])
+    # CPU spike: cpu jumps to max, latency spikes, high errors
+    for _ in range(60):
+        data.append([{"cpu": 0.1 if i < 7 else 0.98, "memory": 0.1, "latency_ms": 50 if i < 7 else 900, "error_rate": 0 if i < 7 else 0.6, "label": "cpu_spike"} for i in range(10)])
     return data
 
 def train_models():
-    os.makedirs(MODEL_DIR, exist_ok=True)
+    """Trains anomaly detection and fault classification models."""
+    os.makedirs("python/ai/model", exist_ok=True)
     raw_data = generate_dummy_data()
     feature_sets, labels = [], []
     for history in raw_data:
@@ -39,11 +25,12 @@ def train_models():
         if feat:
             feature_sets.append([feat[k] for k in sorted(feat.keys())])
             labels.append(history[-1]['label'])
-    X, y = np.array(feature_sets), np.array(labels)
-    iso_forest = IsolationForest(contamination=0.2, random_state=42).fit(X)
-    joblib.dump(iso_forest, ANOMALY_MODEL_PATH)
-    classifier = RandomForestClassifier(n_estimators=100, random_state=42).fit(X, y)
-    joblib.dump(classifier, CLASSIFIER_MODEL_PATH)
+    from sklearn.ensemble import IsolationForest, RandomForestClassifier
+    iso_forest = IsolationForest(contamination=0.2, random_state=42).fit(feature_sets)
+    joblib.dump(iso_forest, "python/ai/model/anomaly_model.pkl")
+    classifier = RandomForestClassifier(n_estimators=100, random_state=42).fit(feature_sets, labels)
+    joblib.dump(classifier, "python/ai/model/fault_classifier.pkl")
+    print(f"Models trained. Classes: {classifier.classes_}")
 
 if __name__ == "__main__":
     train_models()

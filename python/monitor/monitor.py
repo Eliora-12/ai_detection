@@ -8,10 +8,13 @@ import numpy as np
 
 # Add parent directory to path to import config and utils
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from config.settings import SERVER_PORTS, MONITOR_INTERVAL_SECONDS, MONITOR_PORT, HIGH_LOAD_THRESHOLD
+from config.settings import SERVER_PORTS, MONITOR_INTERVAL_SECONDS, MONITOR_PORT, HIGH_LOAD_THRESHOLD, AI_SERVICE_PORT
 from utils.logger import log_event
 
 class Monitor:
+    """
+    Monitor service that polls servers for health metrics and detects fault trends.
+    """
     def __init__(self):
         self.server_statuses = {sid: {"status": "unknown", "metrics": {}} for sid in SERVER_PORTS}
         self.history = {sid: [] for sid in SERVER_PORTS}
@@ -22,6 +25,7 @@ class Monitor:
         self.setup_routes()
 
     def setup_routes(self):
+        """Sets up HTTP API endpoints for the monitor."""
         @self.app.route('/monitor/status', methods=['GET'])
         def status():
             return jsonify(self.server_statuses)
@@ -34,10 +38,28 @@ class Monitor:
         def get_faults():
             return jsonify(self.faults)
 
+        @self.app.route('/monitor/ready', methods=['GET'])
+        def ready():
+            """Checks if all servers have enough snapshots for AI prediction."""
+            counts = {sid: len(h) for sid, h in self.history.items()}
+            min_met = all(count >= 5 for count in counts.values())
+            return jsonify({
+                "ready": min_met,
+                "min_snapshots_met": min_met,
+                "snapshot_counts": counts
+            })
+
     def _detect_trends(self, server_id, metrics):
+        """Analyzes metric history to detect performance degradation trends."""
         history = self.history[server_id]
         if len(history) < 5:
             return
+
+        # Periodically trigger AI prediction via a side-effect poll
+        try:
+            requests.get(f"http://localhost:{AI_SERVICE_PORT}/predict/{server_id}", timeout=1)
+        except Exception:
+            pass
 
         if metrics.get('cpu', 0) > HIGH_LOAD_THRESHOLD:
             self._report_fault(server_id, "high_cpu", f"CPU load {metrics['cpu']} exceeded threshold")
@@ -57,10 +79,12 @@ class Monitor:
             self._report_fault(server_id, "error_rate_high", "Error rate exceeded 5%")
 
     def _report_fault(self, server_id, fault_type, message):
+        """Logs and records a detected fault."""
         fault_event = log_event("fault_detected", "monitor", message, server_id=server_id, metadata={"fault_type": fault_type})
         self.faults.append(fault_event)
 
     def _poll_servers(self):
+        """Background loop to poll all servers for health metrics."""
         while True:
             for sid, port in SERVER_PORTS.items():
                 try:
@@ -74,11 +98,12 @@ class Monitor:
                         self._detect_trends(sid, metrics)
                     else:
                         self.server_statuses[sid]["status"] = "error"
-                except:
+                except Exception:
                     self.server_statuses[sid]["status"] = "down"
             time.sleep(MONITOR_INTERVAL_SECONDS)
 
     def run(self):
+        """Starts the monitor polling thread and uvicorn/flask app."""
         threading.Thread(target=self._poll_servers, daemon=True).start()
         self.app.run(port=MONITOR_PORT, debug=False)
 

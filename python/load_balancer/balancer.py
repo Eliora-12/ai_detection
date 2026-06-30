@@ -12,6 +12,10 @@ from config.settings import SERVER_PORTS, LOAD_BALANCER_PORT, BALANCER_STRATEGY,
 from utils.logger import log_event
 
 class LoadBalancer:
+    """
+    Load Balancer that routes traffic between servers using various strategies.
+    Supports AI-guided routing for predictive traffic draining.
+    """
     def __init__(self):
         self.strategy = BALANCER_STRATEGY
         self.servers = list(SERVER_PORTS.keys())
@@ -22,8 +26,10 @@ class LoadBalancer:
         self.setup_routes()
 
     def setup_routes(self):
+        """Sets up HTTP API endpoints for the load balancer."""
         @self.app.route('/request', methods=['POST'])
         def handle_request():
+            """Proxies an incoming request to a selected backend server."""
             target = self._select_server()
             if not target:
                 return jsonify({"error": "No healthy servers available"}), 503
@@ -32,10 +38,12 @@ class LoadBalancer:
 
         @self.app.route('/balancer/stats', methods=['GET'])
         def stats():
+            """Returns current load balancer statistics and strategy."""
             return jsonify({"strategy": self.strategy, "server_stats": self.server_stats})
 
         @self.app.route('/balancer/drain/<server_id>', methods=['POST'])
         def drain(server_id):
+            """Drains traffic from a specific server."""
             if server_id in self.server_stats:
                 self.server_stats[server_id]["status"] = "draining"
                 return jsonify({"message": f"Server {server_id} draining"})
@@ -43,12 +51,14 @@ class LoadBalancer:
 
         @self.app.route('/balancer/restore/<server_id>', methods=['POST'])
         def restore(server_id):
+            """Restores a server back into the routing rotation."""
             if server_id in self.server_stats:
                 self.server_stats[server_id]["status"] = "ok"
                 return jsonify({"message": f"Server {server_id} restored"})
             return jsonify({"error": "Unknown server"}), 404
 
     def _select_server(self):
+        """Selects a backend server based on the active strategy."""
         healthy_servers = [s for s in self.servers if self.server_stats[s]["status"] == "ok"]
         if not healthy_servers:
             return None
@@ -71,6 +81,7 @@ class LoadBalancer:
         return healthy_servers[0]
 
     def run(self):
+        """Starts the load balancer HTTP API."""
         self.app.run(port=LOAD_BALANCER_PORT, debug=False)
 
 if __name__ == "__main__":

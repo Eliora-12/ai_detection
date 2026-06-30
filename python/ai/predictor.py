@@ -18,10 +18,11 @@ MODEL_DIR = os.path.join(os.path.dirname(__file__), 'model')
 ANOMALY_MODEL_PATH = os.path.join(MODEL_DIR, 'anomaly_model.pkl')
 CLASSIFIER_MODEL_PATH = os.path.join(MODEL_DIR, 'fault_classifier.pkl')
 
+# Load models
 try:
     iso_forest = joblib.load(ANOMALY_MODEL_PATH)
     classifier = joblib.load(CLASSIFIER_MODEL_PATH)
-except:
+except Exception:
     iso_forest = None
     classifier = None
 
@@ -33,6 +34,10 @@ class PredictRequest(BaseModel):
 
 @app.post("/predict")
 def predict_manual(request: PredictRequest):
+    """
+    Main prediction endpoint. Accepts metrics and returns fault probability,
+    fault type, and recommended recovery actions.
+    """
     server_id = request.server_id
     metrics = request.metrics
     if not iso_forest or not classifier:
@@ -62,15 +67,20 @@ def predict_manual(request: PredictRequest):
 
 @app.get("/predict/{server_id}")
 def predict_server(server_id: str):
+    """
+    Pulls latest metrics for a specific server from the Monitor and runs a prediction.
+    """
     try:
         response = requests.get(f"http://localhost:{MONITOR_PORT}/monitor/history/{server_id}")
         if response.status_code == 200:
             return predict_manual(PredictRequest(server_id=server_id, metrics=response.json()))
-    except: pass
+    except Exception: pass
     raise HTTPException(status_code=404)
 
 @app.get("/predictions/history")
-def get_history(): return prediction_history
+def get_history():
+    """Returns the history of recent AI predictions."""
+    return prediction_history
 
 if __name__ == "__main__":
     import uvicorn

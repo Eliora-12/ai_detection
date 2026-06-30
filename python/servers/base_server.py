@@ -85,7 +85,7 @@ class BaseServer:
             severity = data.get('severity', 'low')
             if severity == 'high':
                 self.cpu_load = 0.95
-                self.error_count += 10
+                self.error_count += 50
             log_event("alert", self.server_id, f"Fault injected: {self.fault_type}", metadata=data)
             return jsonify({"message": f"Fault {self.fault_type} injected"})
 
