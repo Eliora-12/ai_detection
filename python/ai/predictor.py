@@ -1,36 +1,68 @@
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import joblib
 import os
 import sys
 import numpy as np
 import requests
+from contextlib import asynccontextmanager
 
 # Add parent directory to path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from ai.features import extract_features
-from config.settings import AI_SERVICE_PORT, MONITOR_PORT
+from ai.train import train_models
+from config import settings
 from utils.logger import log_event
-
-app = FastAPI()
 
 MODEL_DIR = os.path.join(os.path.dirname(__file__), 'model')
 ANOMALY_MODEL_PATH = os.path.join(MODEL_DIR, 'anomaly_model.pkl')
 CLASSIFIER_MODEL_PATH = os.path.join(MODEL_DIR, 'fault_classifier.pkl')
 
-# Load models
-try:
-    iso_forest = joblib.load(ANOMALY_MODEL_PATH)
-    classifier = joblib.load(CLASSIFIER_MODEL_PATH)
-except Exception:
-    iso_forest = None
-    classifier = None
+def load_or_train_models():
+    """Load existing models or train new ones if not found."""
+    global iso_forest, classifier
+    if not os.path.exists(ANOMALY_MODEL_PATH) or not os.path.exists(CLASSIFIER_MODEL_PATH):
+        print("Model files not found — training from scratch...")
+        os.makedirs(MODEL_DIR, exist_ok=True)
+        train_models()
+        print("✓ Models trained and saved")
+
+    try:
+        iso_forest = joblib.load(ANOMALY_MODEL_PATH)
+        classifier = joblib.load(CLASSIFIER_MODEL_PATH)
+        print("✓ Models loaded from disk")
+    except Exception as e:
+        print(f"Error loading models: {e}")
+        iso_forest = None
+        classifier = None
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    load_or_train_models()
+    yield
+
+app = FastAPI(lifespan=lifespan)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["https://ai-detection-liart.vercel.app", "http://localhost:3000"],
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type"],
+)
+
+iso_forest = None
+classifier = None
 
 prediction_history = []
 
 class PredictRequest(BaseModel):
     server_id: str
     metrics: list
+
+@app.get("/health")
+def health():
+    return {"status": "ok", "service": "ai-predictor"}
 
 @app.post("/predict")
 def predict_manual(request: PredictRequest):
@@ -71,7 +103,7 @@ def predict_server(server_id: str):
     Pulls latest metrics for a specific server from the Monitor and runs a prediction.
     """
     try:
-        response = requests.get(f"http://localhost:{MONITOR_PORT}/monitor/history/{server_id}")
+        response = requests.get(f"{settings.MONITOR_URL}/monitor/history/{server_id}")
         if response.status_code == 200:
             return predict_manual(PredictRequest(server_id=server_id, metrics=response.json()))
     except Exception: pass
@@ -84,4 +116,4 @@ def get_history():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=AI_SERVICE_PORT)
+    uvicorn.run(app, host="0.0.0.0", port=settings.get_port(settings.AI_SERVICE_PORT))

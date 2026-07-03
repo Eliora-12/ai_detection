@@ -1,0 +1,12 @@
+flask
+flask-cors
+requests
+numpy
+fastapi
+pydantic
+joblib
+uvicorn
+pandas
+scikit-learn
+pytest
+httpx

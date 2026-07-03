@@ -5,16 +5,31 @@ import json
 import os
 import sys
 import datetime
+from flask import Flask, jsonify, request
+from flask_cors import CORS
 
 # Add parent directory to path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from config.settings import (
-    AI_SERVICE_PORT, LOAD_BALANCER_PORT, RECOVERY_PORT, SERVER_PORTS,
-    AI_CONFIDENCE_AUTO_RECOVER
-)
+from config import settings
 from utils.logger import log_event
 
-RECOVERY_LOG_FILE = os.path.join(os.path.dirname(__file__), "../../data/recovery_log.json")
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+RECOVERY_LOG_FILE = os.path.join(BASE_DIR, "data", "recovery_log.json")
+
+def wait_for_service(url: str, name: str, retries: int = 10, delay: int = 3):
+    """Retry calling a dependency service until it responds or retries are exhausted."""
+    for attempt in range(retries):
+        try:
+            r = requests.get(f"{url}/health", timeout=3)
+            if r.status_code == 200:
+                print(f"✓ {name} is ready")
+                return True
+        except Exception:
+            pass
+        print(f"  Waiting for {name}... (attempt {attempt + 1}/{retries})")
+        time.sleep(delay)
+    print(f"✗ {name} did not become ready — continuing anyway")
+    return False
 
 class RecoveryManager:
     """
@@ -30,6 +45,11 @@ class RecoveryManager:
 
     def _load_history(self):
         """Loads recovery history from flat JSON file."""
+        os.makedirs(os.path.dirname(RECOVERY_LOG_FILE), exist_ok=True)
+        if not os.path.exists(RECOVERY_LOG_FILE):
+            with open(RECOVERY_LOG_FILE, "w") as f:
+                f.write("[]")
+
         if os.path.exists(RECOVERY_LOG_FILE):
             try:
                 with open(RECOVERY_LOG_FILE, 'r') as f:
@@ -64,10 +84,16 @@ class RecoveryManager:
 
         self.active_recoveries.add(server_id)
 
+        server_urls = {
+            "server1": settings.SERVER1_URL,
+            "server2": settings.SERVER2_URL,
+            "server3": settings.SERVER3_URL
+        }
+
         def run_action():
             try:
                 time.sleep(1) # Simulate prep time
-                requests.post(f"http://localhost:{SERVER_PORTS[server_id]}/admin/restart")
+                requests.post(f"{server_urls[server_id]}/admin/restart")
                 time.sleep(5) # Wait for restart
                 self._save_history({
                     "timestamp": datetime.datetime.now().isoformat(),
@@ -89,12 +115,13 @@ class RecoveryManager:
 
     def poll_predictions(self):
         """Continuously polls the AI service for high-confidence fault predictions."""
+        wait_for_service(settings.AI_SERVICE_URL, "AI Predictor")
         while True:
             try:
-                response = requests.get(f"http://localhost:{AI_SERVICE_PORT}/predictions/history", timeout=2)
+                response = requests.get(f"{settings.AI_SERVICE_URL}/predictions/history", timeout=2)
                 if response.status_code == 200:
                     for pred in response.json():
-                        if (pred['confidence'] >= AI_CONFIDENCE_AUTO_RECOVER and
+                        if (pred['confidence'] >= settings.AI_CONFIDENCE_AUTO_RECOVER and
                             pred['recommended_action'] != "none" and
                             pred['server_id'] not in self.active_recoveries):
                             # Simple deduplication by not acting if we already have a success for this server recently
@@ -109,15 +136,22 @@ class RecoveryManager:
 
     def run_api(self):
         """Starts the recovery manager HTTP API."""
-        from flask import Flask, jsonify, request
         app = Flask(__name__)
+        CORS(app, origins=["https://ai-detection-liart.vercel.app", "http://localhost:3000"])
+
+        @app.route('/health', methods=['GET'])
+        def health():
+            return jsonify({"status": "ok", "service": "recovery-manager"}), 200
+
         @app.route('/recovery/log')
         def get_log(): return jsonify(self.recovery_history)
+
         @app.route('/recovery/trigger', methods=['POST'])
         def trigger():
             data = request.json
             return jsonify(self.execute_recovery(data['server_id'], data['action'], 1.0, "manual", auto=False))
-        app.run(port=RECOVERY_PORT, debug=False)
+
+        app.run(host="0.0.0.0", port=settings.get_port(settings.RECOVERY_PORT), debug=False)
 
 if __name__ == "__main__":
     rm = RecoveryManager()

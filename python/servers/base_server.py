@@ -8,7 +8,7 @@ import datetime
 
 # Add parent directory to path to import config and utils
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from config.settings import FAULT_PROBABILITY_RANGE, HIGH_LOAD_THRESHOLD
+from config import settings
 from utils.logger import log_event
 
 class BaseServer:
@@ -91,8 +91,8 @@ class BaseServer:
 
     def _get_simulated_latency(self):
         base_latency = 50
-        if self.cpu_load > HIGH_LOAD_THRESHOLD:
-            base_latency += (self.cpu_load - HIGH_LOAD_THRESHOLD) * 1000
+        if self.cpu_load > settings.HIGH_LOAD_THRESHOLD:
+            base_latency += (self.cpu_load - settings.HIGH_LOAD_THRESHOLD) * 1000
         return int(base_latency + random.uniform(0, 20))
 
     def _simulate_metrics(self):
@@ -115,4 +115,4 @@ class BaseServer:
             time.sleep(2)
 
     def run(self):
-        self.app.run(port=self.port, debug=False, threaded=True)
+        self.app.run(host="0.0.0.0", port=settings.get_port(self.port), debug=False, threaded=True)

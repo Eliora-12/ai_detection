@@ -2,7 +2,8 @@ import json
 import datetime
 import os
 
-LOG_FILE = os.path.join(os.path.dirname(__file__), "../../data/logs.json")
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+LOG_FILE = os.path.join(BASE_DIR, "data", "logs.json")
 
 def log_event(event_type, source, message, server_id=None, metadata=None):
     """
@@ -18,6 +19,9 @@ def log_event(event_type, source, message, server_id=None, metadata=None):
     }
 
     os.makedirs(os.path.dirname(LOG_FILE), exist_ok=True)
+    if not os.path.exists(LOG_FILE):
+        with open(LOG_FILE, "w") as f:
+            f.write("[]")
 
     logs = []
     if os.path.exists(LOG_FILE):
