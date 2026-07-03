@@ -20,3 +20,9 @@ test-components:
 	npm run test:components
 
 check-all: lint-python lint-js type-check test-unit
+
+build-check:
+	npm run build
+
+vercel-preflight: lint-js type-check build-check
+	@echo "✓ All Vercel preflight checks passed"

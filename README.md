@@ -1,36 +1,251 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# AI Detection: Distributed AI Fault Detection & Self-Healing System
 
-## Getting Started
+Build a full-stack, distributed AI-based fault detection and self-healing system. The system's core value proposition is **predicting server failures before they happen** and automatically recovering from them — eliminating downtime rather than just responding to it.
 
-First, run the development server:
+Traditional monitoring reacts to outages. This system prevents them. It watches server metrics in real time, learns what healthy behaviour looks like, detects subtle early-warning patterns in the data, acts autonomously to reroute traffic and trigger recovery, and explains its reasoning to operators through a live observability dashboard.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## Architecture
+
+```mermaid
+graph TD
+    Client["Traffic Client\n(client.py)"] -->|POST /request| LB["Load Balancer\n:5000"]
+    LB -->|routes traffic| S1["Server 1\n:5001\nCPU Spike Profile"]
+    LB -->|routes traffic| S2["Server 2\n:5002\nMemory Leak Profile"]
+    LB -->|routes traffic| S3["Server 3\n:5003\nNetwork Degradation Profile"]
+    MON["Monitor\n:5020"] -->|polls GET /health| S1
+    MON -->|polls GET /health| S2
+    MON -->|polls GET /health| S3
+    MON -->|fault events| RM["Recovery Manager\n:5030"]
+    AI["AI Predictor\n:5010"] -->|queried by| MON
+    AI -->|queried by| LB
+    AI -->|queried by| RM
+    RM -->|POST /admin/restart| S1
+    RM -->|POST /admin/restart| S2
+    RM -->|POST /admin/restart| S3
+    RM -->|POST /balancer/drain| LB
+    DASH["Next.js Dashboard\n:3000"] -->|SSE stream| DASH
+    DASH -->|GET /api/status| MON
+    DASH -->|GET /api/predictions| AI
+    DASH -->|GET /api/recovery| RM
+    DASH -->|POST /api/trigger| RM
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Prerequisites
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- **Python**: 3.10+
+- **Node.js**: 18+
+- **Package Managers**: pip, npm
 
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
+## Installation
 
-## Learn More
+```bash
+git clone https://github.com/Eliora-12/ai_detection.git
+cd ai_detection
+npm install
+pip install -r requirements.txt
+```
 
-To learn more about Next.js, take a look at the following resources:
+## Running the System
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### 1. Start Python Backend Services
+Starts all microservices (Servers, Monitor, AI Predictor, Load Balancer, Recovery Manager).
+```bash
+python run_all.py
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
+### 2. Start Next.js Dashboard
+```bash
+npm run dev
+```
+The dashboard is available at [http://localhost:3000](http://localhost:3000).
 
-## Deploy on Vercel
+## Deploying to Vercel
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Architecture Note
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+Vercel hosts only the **Next.js frontend**. The Python microservices (servers, monitor, AI predictor, load balancer, recovery manager) must be deployed separately to a platform that supports long-running Python processes (e.g. Railway, Render, Fly.io, or a VPS). The Vercel dashboard connects to those services via environment variables.
+
+```mermaid
+graph LR
+    subgraph Vercel
+        DASH["Next.js Dashboard\n(Frontend + API Routes)"]
+    end
+    subgraph "Python Host (Railway / Render / VPS)"
+        MON["Monitor :5020"]
+        AI["AI Predictor :5010"]
+        LB["Load Balancer :5000"]
+        RM["Recovery Manager :5030"]
+        S1["Server 1 :5001"]
+        S2["Server 2 :5002"]
+        S3["Server 3 :5003"]
+    end
+    DASH -->|MONITOR_URL| MON
+    DASH -->|AI_SERVICE_URL| AI
+    DASH -->|LOAD_BALANCER_URL| LB
+    DASH -->|RECOVERY_URL| RM
+    LB --> S1
+    LB --> S2
+    LB --> S3
+```
+
+### Option 1: Deploy via Vercel CLI (Recommended)
+
+```bash
+# Install Vercel CLI
+npm install -g vercel
+
+# From the project root
+vercel
+
+# Follow the prompts:
+# - Link to your Vercel account
+# - Set project name: ai-detection
+# - Framework: Next.js (auto-detected)
+# - Root directory: ./  (project root)
+
+# Deploy to production
+vercel --prod
+```
+
+### Option 2: Deploy via Vercel Dashboard (GitHub Integration)
+
+1. Go to [https://vercel.com/new](https://vercel.com/new)
+2. Click **"Import Git Repository"** and select `Eliora-12/ai_detection`
+3. Set the framework preset to **Next.js**
+4. Set the root directory to `.`
+5. Under **"Build & Output Settings"**, confirm:
+   - Build command: `npm run build`
+   - Output directory: `.next`
+   - Install command: `npm install`
+6. Under **"Environment Variables"**, add all four variables:
+   | Variable | Value |
+   |---|---|
+   | `MONITOR_URL` | URL of your deployed monitor service |
+   | `AI_SERVICE_URL` | URL of your deployed AI predictor service |
+   | `LOAD_BALANCER_URL` | URL of your deployed load balancer |
+   | `RECOVERY_URL` | URL of your deployed recovery manager |
+7. Click **Deploy**
+
+### Connecting to Live Python Services
+
+Once the Vercel deployment is live, it serves as a functional dashboard shell. To connect it to real running Python services:
+
+1. Deploy the Python services to a host that supports persistent Python processes.
+2. Start each service and note its public URL.
+3. In the Vercel dashboard, go to **Settings → Environment Variables**.
+4. Update each of the four variables with the real public URLs.
+5. Trigger a **Redeploy** for the changes to take effect.
+
+### Verifying the Deployment
+
+| URL | Expected Response |
+|---|---|
+| `https://<your-vercel-url>.vercel.app` | Dashboard loads, shows offline banner if no Python services connected |
+| `https://<your-vercel-url>.vercel.app/api/status` | `{ "error": true, "message": "Service unavailable..." }` or live data |
+| `https://<your-vercel-url>.vercel.app/api/stream` | SSE stream opens (may return empty events if services offline) |
+
+### SSE on Vercel — Important Note
+
+Vercel serverless functions have a maximum execution duration. The SSE stream at `/api/stream` is configured to automatically close and prompt the client to reconnect every 25 seconds, which keeps it within Vercel's limits. This reconnection is handled automatically by the frontend.
+
+### Troubleshooting
+
+| Problem | Solution |
+|---|---|
+| Build fails with "env var not found" | Ensure all 4 env vars are set in Vercel dashboard before deploying |
+| Dashboard shows servers as offline | Python services are not yet deployed or env vars point to wrong URLs |
+| SSE stream disconnects immediately | Check that `maxDuration = 25` is exported from `app/api/stream/route.ts` |
+| CORS errors in browser console | Confirm `vercel.json` CORS headers are present in the deployment |
+| TypeScript build errors | Run `npx tsc --noEmit` locally and fix all errors before pushing |
+
+## Environment Variables
+
+| Variable | Default | Description |
+|---|---|---|
+| `MONITOR_URL` | `http://localhost:5020` | URL of the Monitor service |
+| `AI_SERVICE_URL` | `http://localhost:5010` | URL of the AI Predictor service |
+| `LOAD_BALANCER_URL` | `http://localhost:5000` | URL of the Load Balancer |
+| `RECOVERY_URL` | `http://localhost:5030` | URL of the Recovery Manager |
+
+## Running Tests
+
+```bash
+pytest tests/unit -v           # Python unit tests
+pytest tests/integration -v    # Full system integration test
+npm run test:components         # Next.js component tests
+```
+
+## Component Descriptions
+
+- **Servers**: Three independent Flask processes simulating diverse failure modes: `server1` (CPU spikes), `server2` (Memory leaks), and `server3` (Network degradation).
+- **Monitor**: Continuously polls server health, identifies metric trends (using slope analysis), and emits `fault_detected` events.
+- **AI Predictor**: A FastAPI microservice using `scikit-learn` (Isolation Forest + Random Forest) to predict failures and provide natural language explanations.
+- **Load Balancer**: Routes incoming traffic using strategies like `ai_guided`, which drains traffic from servers with high predicted fault probabilities.
+- **Recovery Manager**: Listens to AI predictions and executes autonomous recovery actions (e.g., graceful restarts) before a total failure occurs.
+- **Dashboard**: A real-time Next.js application showing live server health, AI reasoning, and recovery logs via SSE.
+- **Traffic Client**: Generates realistic traffic and stress modes to validate system resilience.
+
+## Example AI Prediction Response
+
+```json
+{
+  "server_id": "server2",
+  "is_anomaly": true,
+  "fault_probability": 0.87,
+  "fault_type": "memory_leak",
+  "recommended_action": "restart",
+  "confidence": 0.91,
+  "feature_importances": {
+    "memory_delta": 0.41,
+    "memory_rolling_avg_10": 0.28
+  },
+  "explanation": "Detected memory_leak pattern with 91.0% confidence. This is an anomalous state for the server."
+}
+```
+
+## Example Recovery Log Entry
+
+```json
+{
+  "timestamp": "2024-01-01T12:00:00.000Z",
+  "server_id": "server2",
+  "trigger": "ai_prediction",
+  "fault_type": "memory_leak",
+  "action_taken": "restart",
+  "action_confidence": 0.91,
+  "outcome": "success",
+  "recovery_time_ms": 6200,
+  "auto_or_manual": "auto"
+}
+```
+
+## Testing & Stress Tools
+
+### Manual Fault Injection
+You can manually trigger a failure on any server to test the recovery loop:
+```bash
+curl -X POST http://localhost:5002/admin/inject-fault \
+     -H "Content-Type: application/json" \
+     -d '{"fault_type": "cpu_spike", "severity": "high"}'
+```
+
+### Traffic Generator
+Use the traffic client to simulate load:
+```bash
+python python/client/client.py --rate 10    # 10 requests per second
+python python/client/client.py --stress     # Burst of 50 requests per second
+```
+
+## Phased Development Summary
+
+- **Phase 1**: Foundation, shared configuration, and structured logging.
+- **Phase 2**: Three Flask servers with unique fault profiles.
+- **Phase 3**: Monitor service with trend-based early fault detection.
+- **Phase 4**: AI service with anomaly detection and fault classification.
+- **Phase 5**: Intelligent Load Balancer with AI-guided traffic draining.
+- **Phase 6**: Autonomous Recovery Orchestrator with fatigue suppression.
+- **Phase 7**: Real-time Next.js Dashboard with SSE updates.
+- **Phase 8**: Traffic client and stress testing tools.
+- **Phase 9**: Full test suite and comprehensive documentation.
+
+*Note: `data/logs.json` and `data/recovery_log.json` are seeded as empty arrays `[]` for a clean first start.*

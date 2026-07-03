@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { Prediction } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 25;
 
 export async function GET(req: NextRequest) {
   const encoder = new TextEncoder();
@@ -14,12 +15,21 @@ export async function GET(req: NextRequest) {
         controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
       };
 
+      const startTime = Date.now();
+
       const interval = setInterval(async () => {
+        // Vercel limit check: close and let client reconnect every 25s
+        if (Date.now() - startTime > 24000) {
+           clearInterval(interval);
+           controller.close();
+           return;
+        }
+
         try {
           const [statusRes, predictionsRes, faultsRes] = await Promise.all([
-            fetch(`${monitorUrl}/monitor/status`),
-            fetch(`${aiUrl}/predictions/history`),
-            fetch(`${monitorUrl}/monitor/faults`)
+            fetch(`${monitorUrl}/monitor/status`, { cache: 'no-store' }),
+            fetch(`${aiUrl}/predictions/history`, { cache: 'no-store' }),
+            fetch(`${monitorUrl}/monitor/faults`, { cache: 'no-store' })
           ]);
 
           if (statusRes.ok) {
@@ -43,7 +53,12 @@ export async function GET(req: NextRequest) {
             }
           }
         } catch (e) {
-          // Silent fail in stream
+          // Send error event if backend unreachable
+          send({
+            type: 'error',
+            error: true,
+            message: "Backend services offline"
+          });
         }
       }, 3000);
 

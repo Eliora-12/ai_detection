@@ -7,11 +7,11 @@ export async function GET() {
 
   try {
     const [statusRes, predictionsRes] = await Promise.all([
-      fetch(`${monitorUrl}/monitor/status`),
-      fetch(`${aiUrl}/predictions/history`)
+      fetch(`${monitorUrl}/monitor/status`, { cache: 'no-store' }),
+      fetch(`${aiUrl}/predictions/history`, { cache: 'no-store' })
     ]);
 
-    if (!statusRes.ok) return NextResponse.json({ error: 'Monitor unreachable' }, { status: 502 });
+    if (!statusRes.ok) throw new Error('Monitor unreachable');
 
     const statuses = await statusRes.json();
     const predictions: Prediction[] = predictionsRes.ok ? await predictionsRes.json() : [];
@@ -25,6 +25,10 @@ export async function GET() {
 
     return NextResponse.json(statuses);
   } catch (e) {
-    return NextResponse.json({ error: 'API Error' }, { status: 500 });
+    return NextResponse.json({
+      error: true,
+      message: "Service unavailable. Backend services are not reachable.",
+      service: "monitor"
+    }, { status: 503 });
   }
 }
