@@ -11,7 +11,7 @@ from contextlib import asynccontextmanager
 # Add parent directory to path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from ai.features import extract_features
-from ai.train import train_models
+from ai.train import train_and_save_models
 from config import settings
 from utils.logger import log_event
 
@@ -25,7 +25,7 @@ def load_or_train_models():
     if not os.path.exists(ANOMALY_MODEL_PATH) or not os.path.exists(CLASSIFIER_MODEL_PATH):
         print("Model files not found — training from scratch...")
         os.makedirs(MODEL_DIR, exist_ok=True)
-        train_models()
+        train_and_save_models()
         print("✓ Models trained and saved")
 
     try:

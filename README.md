@@ -150,7 +150,7 @@ In the Railway dashboard, add 7 services to the project, one per Python microser
 1. Click **"+ New Service"** → **"GitHub Repo"**
 2. Select `Eliora-12/ai_detection`
 3. Set the **Root Directory** to `python/` (or the specific service subdirectory)
-4. Set the **Start Command** to the appropriate command (e.g. `python servers/server1.py`)
+4. Set the **Start Command** to the appropriate command (e.g. `python python/servers/server1.py`)
 5. Set the **Health Check Path** to `/health`
 
 ### Step 3 — Set Environment Variables in Railway
