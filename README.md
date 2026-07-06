@@ -126,6 +126,97 @@ vercel --prod
    | `RECOVERY_URL` | URL of your deployed recovery manager |
 7. Click **Deploy**
 
+## Deploying Python Services to Railway
+
+### Prerequisites
+- A Railway account at [https://railway.app](https://railway.app)
+- Railway CLI installed: `npm install -g @railway/cli`
+- The Vercel dashboard already deployed at `https://ai-detection-liart.vercel.app`
+
+### Step 1 — Create a New Railway Project
+
+```bash
+railway login
+railway init
+# Name the project: ai-detection-backend
+```
+
+Or via the Railway dashboard at [https://railway.app/new](https://railway.app/new) — select "Deploy from GitHub repo" and connect `Eliora-12/ai_detection`.
+
+### Step 2 — Add Each Service
+
+In the Railway dashboard, add 7 services to the project, one per Python microservice. For each:
+
+1. Click **"+ New Service"** → **"GitHub Repo"**
+2. Select `Eliora-12/ai_detection`
+3. Set the **Root Directory** to `python/` (or the specific service subdirectory)
+4. Set the **Start Command** to the appropriate command (e.g. `python python/servers/server1.py`)
+5. Set the **Health Check Path** to `/health`
+
+### Step 3 — Set Environment Variables in Railway
+
+For each service, set the environment variables it needs to reach its dependencies. In the Railway dashboard under each service → **Variables**:
+
+**Monitor service:**
+```
+SERVER1_URL=<Railway URL of server1 service>
+SERVER2_URL=<Railway URL of server2 service>
+SERVER3_URL=<Railway URL of server3 service>
+AI_SERVICE_URL=<Railway URL of AI predictor service>
+```
+
+**Load Balancer:**
+```
+SERVER1_URL=<Railway URL of server1 service>
+SERVER2_URL=<Railway URL of server2 service>
+SERVER3_URL=<Railway URL of server3 service>
+AI_SERVICE_URL=<Railway URL of AI predictor service>
+```
+
+**Recovery Manager:**
+```
+MONITOR_URL=<Railway URL of monitor service>
+AI_SERVICE_URL=<Railway URL of AI predictor service>
+LOAD_BALANCER_URL=<Railway URL of load balancer service>
+SERVER1_URL=<Railway URL of server1 service>
+SERVER2_URL=<Railway URL of server2 service>
+SERVER3_URL=<Railway URL of server3 service>
+```
+
+**Server 1, 2, 3:** No inter-service env vars needed.
+
+### Step 4 — Get Public URLs and Update Vercel
+
+Once all services are deployed and healthy (green in Railway dashboard):
+
+1. Note the public Railway URLs for: Monitor, AI Predictor, Load Balancer, Recovery Manager
+2. Go to the Vercel dashboard → `ai-detection` project → **Settings → Environment Variables**
+3. Update all four variables:
+   ```
+   MONITOR_URL=https://<monitor-service>.railway.app
+   AI_SERVICE_URL=https://<ai-predictor-service>.railway.app
+   LOAD_BALANCER_URL=https://<load-balancer-service>.railway.app
+   RECOVERY_URL=https://<recovery-service>.railway.app
+   ```
+4. Trigger a **Redeploy** on Vercel
+
+### Step 5 — Verify the Live System
+
+Visit `https://ai-detection-liart.vercel.app` — the dashboard should now show:
+- Live server health cards for Server 1, 2, and 3
+- Real-time AI predictions updating via SSE
+- Recovery events populating as faults are detected and resolved
+
+### Troubleshooting Railway Deployments
+
+| Problem | Solution |
+|---|---|
+| Service crashes immediately on start | Check Railway logs — likely a missing env var or port binding issue |
+| Services can't reach each other | Confirm inter-service URLs are set correctly in Railway Variables |
+| Dashboard still shows offline after connecting | Confirm CORS is configured for `https://ai-detection-liart.vercel.app` in all 4 public services |
+| Health check failing | Ensure `GET /health` returns HTTP 200 on all services |
+| AI predictor crashes with model not found | The model `.pkl` file may not be committed — ensure `python/ai/model/` contains the trained model files or add a startup training step |
+
 ### Connecting to Live Python Services
 
 Once the Vercel deployment is live, it serves as a functional dashboard shell. To connect it to real running Python services:

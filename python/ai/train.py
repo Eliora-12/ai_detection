@@ -1,6 +1,9 @@
 import os, pandas as pd, numpy as np, joblib
 from python.ai.features import extract_features
 
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+MODEL_DIR = os.path.join(BASE_DIR, "python", "ai", "model")
+
 def generate_dummy_data():
     """Generates synthetic training data for Isolation Forest and Random Forest."""
     data = []
@@ -15,9 +18,9 @@ def generate_dummy_data():
         data.append([{"cpu": 0.1 if i < 7 else 0.98, "memory": 0.1, "latency_ms": 50 if i < 7 else 900, "error_rate": 0 if i < 7 else 0.6, "label": "cpu_spike"} for i in range(10)])
     return data
 
-def train_models():
+def train_and_save_models():
     """Trains anomaly detection and fault classification models."""
-    os.makedirs("python/ai/model", exist_ok=True)
+    os.makedirs(MODEL_DIR, exist_ok=True)
     raw_data = generate_dummy_data()
     feature_sets, labels = [], []
     for history in raw_data:
@@ -27,10 +30,10 @@ def train_models():
             labels.append(history[-1]['label'])
     from sklearn.ensemble import IsolationForest, RandomForestClassifier
     iso_forest = IsolationForest(contamination=0.2, random_state=42).fit(feature_sets)
-    joblib.dump(iso_forest, "python/ai/model/anomaly_model.pkl")
+    joblib.dump(iso_forest, os.path.join(MODEL_DIR, "anomaly_model.pkl"))
     classifier = RandomForestClassifier(n_estimators=100, random_state=42).fit(feature_sets, labels)
-    joblib.dump(classifier, "python/ai/model/fault_classifier.pkl")
+    joblib.dump(classifier, os.path.join(MODEL_DIR, "fault_classifier.pkl"))
     print(f"Models trained. Classes: {classifier.classes_}")
 
 if __name__ == "__main__":
-    train_models()
+    train_and_save_models()

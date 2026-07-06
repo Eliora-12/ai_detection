@@ -1,1 +1,17 @@
-[]
+[
+  {
+    "server_id": "server1",
+    "outcome": "success"
+  },
+  {
+    "timestamp": "2026-07-04T12:09:51.889011",
+    "server_id": "server2",
+    "trigger": "ai_prediction",
+    "fault_type": "cpu_spike",
+    "action_taken": "restart",
+    "action_confidence": 0.8,
+    "outcome": "success",
+    "recovery_time_ms": 6000,
+    "auto_or_manual": "auto"
+  }
+]

@@ -1,1 +1,265 @@
-[]
+[
+  {
+    "timestamp": "2026-07-04T12:09:20.337114",
+    "event_type": "info",
+    "source": "test",
+    "server_id": null,
+    "message": "message after corruption",
+    "metadata": {}
+  },
+  {
+    "timestamp": "2026-07-04T12:09:31.822748",
+    "event_type": "alert",
+    "source": "server2",
+    "server_id": null,
+    "message": "Fault injected: cpu_spike",
+    "metadata": {
+      "fault_type": "cpu_spike",
+      "severity": "high"
+    }
+  },
+  {
+    "timestamp": "2026-07-04T12:09:42.723920",
+    "event_type": "fault_predicted",
+    "source": "ai",
+    "server_id": "server1",
+    "message": "Detected healthy pattern with 78.0% confidence.",
+    "metadata": {
+      "server_id": "server1",
+      "is_anomaly": true,
+      "fault_probability": 0.21999999999999997,
+      "fault_type": "healthy",
+      "recommended_action": "none",
+      "confidence": 0.78,
+      "feature_importances": {
+        "cpu_avg_5": 0.126,
+        "cpu_delta": 0.01999999999999999,
+        "cpu_var_5": 0.00058,
+        "memory_avg_5": 0.08800000000000001,
+        "memory_delta": 0.03,
+        "memory_var_5": 0.00016999999999999999,
+        "error_rate_avg_5": 0.0,
+        "error_rate_delta": 0.0,
+        "error_rate_var_5": 0.0,
+        "latency_ms_avg_5": 55.8,
+        "latency_ms_delta": -4.0,
+        "latency_ms_var_5": 12.200000000000001,
+        "cpu_latest": 0.16,
+        "memory_latest": 0.1,
+        "latency_latest": 56.0,
+        "error_rate_latest": 0.0
+      },
+      "explanation": "Detected healthy pattern with 78.0% confidence."
+    }
+  },
+  {
+    "timestamp": "2026-07-04T12:09:42.779979",
+    "event_type": "fault_predicted",
+    "source": "ai",
+    "server_id": "server2",
+    "message": "Detected cpu_spike pattern with 80.0% confidence.",
+    "metadata": {
+      "server_id": "server2",
+      "is_anomaly": true,
+      "fault_probability": 0.8,
+      "fault_type": "cpu_spike",
+      "recommended_action": "restart",
+      "confidence": 0.8,
+      "feature_importances": {
+        "cpu_avg_5": 0.604,
+        "cpu_delta": 0.009999999999999898,
+        "cpu_var_5": 0.20753000000000002,
+        "memory_avg_5": 0.10600000000000001,
+        "memory_delta": 0.04000000000000001,
+        "memory_var_5": 0.0003800000000000002,
+        "error_rate_avg_5": 30.0,
+        "error_rate_delta": 0.0,
+        "error_rate_var_5": 750.0,
+        "latency_ms_avg_5": 143.2,
+        "latency_ms_delta": 8.0,
+        "latency_ms_var_5": 5880.2,
+        "cpu_latest": 0.94,
+        "memory_latest": 0.14,
+        "latency_latest": 201.0,
+        "error_rate_latest": 50.0
+      },
+      "explanation": "Detected cpu_spike pattern with 80.0% confidence."
+    }
+  },
+  {
+    "timestamp": "2026-07-04T12:09:42.782652",
+    "event_type": "fault_detected",
+    "source": "monitor",
+    "server_id": "server2",
+    "message": "CPU load 0.94 exceeded threshold",
+    "metadata": {
+      "fault_type": "high_cpu"
+    }
+  },
+  {
+    "timestamp": "2026-07-04T12:09:42.783597",
+    "event_type": "fault_detected",
+    "source": "monitor",
+    "server_id": "server2",
+    "message": "Error rate exceeded 5%",
+    "metadata": {
+      "fault_type": "error_rate_high"
+    }
+  },
+  {
+    "timestamp": "2026-07-04T12:09:42.841492",
+    "event_type": "fault_predicted",
+    "source": "ai",
+    "server_id": "server3",
+    "message": "Detected healthy pattern with 78.0% confidence.",
+    "metadata": {
+      "server_id": "server3",
+      "is_anomaly": true,
+      "fault_probability": 0.21999999999999997,
+      "fault_type": "healthy",
+      "recommended_action": "none",
+      "confidence": 0.78,
+      "feature_importances": {
+        "cpu_avg_5": 0.10600000000000001,
+        "cpu_delta": 0.03,
+        "cpu_var_5": 0.00037999999999999997,
+        "memory_avg_5": 0.14,
+        "memory_delta": -0.010000000000000009,
+        "memory_var_5": 0.00025,
+        "error_rate_avg_5": 0.0,
+        "error_rate_delta": 0.0,
+        "error_rate_var_5": 0.0,
+        "latency_ms_avg_5": 59.6,
+        "latency_ms_delta": 15.0,
+        "latency_ms_var_5": 74.29999999999998,
+        "cpu_latest": 0.13,
+        "memory_latest": 0.15,
+        "latency_latest": 68.0,
+        "error_rate_latest": 0.0
+      },
+      "explanation": "Detected healthy pattern with 78.0% confidence."
+    }
+  },
+  {
+    "timestamp": "2026-07-04T12:09:47.965072",
+    "event_type": "fault_predicted",
+    "source": "ai",
+    "server_id": "server1",
+    "message": "Detected healthy pattern with 78.0% confidence.",
+    "metadata": {
+      "server_id": "server1",
+      "is_anomaly": true,
+      "fault_probability": 0.21999999999999997,
+      "fault_type": "healthy",
+      "recommended_action": "none",
+      "confidence": 0.78,
+      "feature_importances": {
+        "cpu_avg_5": 0.144,
+        "cpu_delta": 0.04000000000000001,
+        "cpu_var_5": 0.0014800000000000004,
+        "memory_avg_5": 0.09,
+        "memory_delta": 0.0,
+        "memory_var_5": 0.00019999999999999998,
+        "error_rate_avg_5": 0.0,
+        "error_rate_delta": 0.0,
+        "error_rate_var_5": 0.0,
+        "latency_ms_avg_5": 56.8,
+        "latency_ms_delta": 0.0,
+        "latency_ms_var_5": 5.200000000000001,
+        "cpu_latest": 0.2,
+        "memory_latest": 0.1,
+        "latency_latest": 56.0,
+        "error_rate_latest": 0.0
+      },
+      "explanation": "Detected healthy pattern with 78.0% confidence."
+    }
+  },
+  {
+    "timestamp": "2026-07-04T12:09:48.065977",
+    "event_type": "fault_predicted",
+    "source": "ai",
+    "server_id": "server2",
+    "message": "Detected cpu_spike pattern with 72.0% confidence.",
+    "metadata": {
+      "server_id": "server2",
+      "is_anomaly": true,
+      "fault_probability": 0.72,
+      "fault_type": "cpu_spike",
+      "recommended_action": "restart",
+      "confidence": 0.72,
+      "feature_importances": {
+        "cpu_avg_5": 0.772,
+        "cpu_delta": 0.010000000000000009,
+        "cpu_var_5": 0.14117,
+        "memory_avg_5": 0.11400000000000002,
+        "memory_delta": 0.0,
+        "memory_var_5": 0.0005800000000000002,
+        "error_rate_avg_5": 40.0,
+        "error_rate_delta": 0.0,
+        "error_rate_var_5": 500.0,
+        "latency_ms_avg_5": 175.8,
+        "latency_ms_delta": 14.0,
+        "latency_ms_var_5": 3761.2000000000003,
+        "cpu_latest": 0.95,
+        "memory_latest": 0.14,
+        "latency_latest": 215.0,
+        "error_rate_latest": 50.0
+      },
+      "explanation": "Detected cpu_spike pattern with 72.0% confidence."
+    }
+  },
+  {
+    "timestamp": "2026-07-04T12:09:48.071427",
+    "event_type": "fault_detected",
+    "source": "monitor",
+    "server_id": "server2",
+    "message": "CPU load 0.95 exceeded threshold",
+    "metadata": {
+      "fault_type": "high_cpu"
+    }
+  },
+  {
+    "timestamp": "2026-07-04T12:09:48.073448",
+    "event_type": "fault_detected",
+    "source": "monitor",
+    "server_id": "server2",
+    "message": "Error rate exceeded 5%",
+    "metadata": {
+      "fault_type": "error_rate_high"
+    }
+  },
+  {
+    "timestamp": "2026-07-04T12:09:48.175723",
+    "event_type": "fault_predicted",
+    "source": "ai",
+    "server_id": "server3",
+    "message": "Detected healthy pattern with 78.0% confidence.",
+    "metadata": {
+      "server_id": "server3",
+      "is_anomaly": true,
+      "fault_probability": 0.21999999999999997,
+      "fault_type": "healthy",
+      "recommended_action": "none",
+      "confidence": 0.78,
+      "feature_importances": {
+        "cpu_avg_5": 0.12200000000000003,
+        "cpu_delta": 0.04999999999999999,
+        "cpu_var_5": 0.0014199999999999998,
+        "memory_avg_5": 0.14800000000000002,
+        "memory_delta": 0.010000000000000009,
+        "memory_var_5": 0.00016999999999999993,
+        "error_rate_avg_5": 0.0,
+        "error_rate_delta": 0.0,
+        "error_rate_var_5": 0.0,
+        "latency_ms_avg_5": 58.2,
+        "latency_ms_delta": -17.0,
+        "latency_ms_var_5": 89.7,
+        "cpu_latest": 0.18,
+        "memory_latest": 0.16,
+        "latency_latest": 51.0,
+        "error_rate_latest": 0.0
+      },
+      "explanation": "Detected healthy pattern with 78.0% confidence."
+    }
+  }
+]

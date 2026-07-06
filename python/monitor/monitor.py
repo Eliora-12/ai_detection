@@ -2,30 +2,51 @@ import time
 import requests
 import threading
 from flask import Flask, jsonify
+from flask_cors import CORS
 import sys
 import os
 import numpy as np
 
 # Add parent directory to path to import config and utils
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from config.settings import SERVER_PORTS, MONITOR_INTERVAL_SECONDS, MONITOR_PORT, HIGH_LOAD_THRESHOLD, AI_SERVICE_PORT
+from config import settings
 from utils.logger import log_event
+
+def wait_for_service(url: str, name: str, retries: int = 10, delay: int = 3):
+    """Retry calling a dependency service until it responds or retries are exhausted."""
+    for attempt in range(retries):
+        try:
+            r = requests.get(f"{url}/health", timeout=3)
+            if r.status_code == 200:
+                print(f"✓ {name} is ready")
+                return True
+        except Exception:
+            pass
+        print(f"  Waiting for {name}... (attempt {attempt + 1}/{retries})")
+        time.sleep(delay)
+    print(f"✗ {name} did not become ready — continuing anyway")
+    return False
 
 class Monitor:
     """
     Monitor service that polls servers for health metrics and detects fault trends.
     """
     def __init__(self):
-        self.server_statuses = {sid: {"status": "unknown", "metrics": {}} for sid in SERVER_PORTS}
-        self.history = {sid: [] for sid in SERVER_PORTS}
+        self.server_statuses = {sid: {"status": "unknown", "metrics": {}} for sid in settings.SERVER_PORTS}
+        self.history = {sid: [] for sid in settings.SERVER_PORTS}
         self.max_history = 100
         self.faults = []
 
         self.app = Flask(__name__)
+        CORS(self.app, origins=["https://ai-detection-liart.vercel.app", "http://localhost:3000"])
         self.setup_routes()
 
     def setup_routes(self):
         """Sets up HTTP API endpoints for the monitor."""
+        @self.app.route('/health', methods=['GET'])
+        def health():
+            return jsonify({"status": "ok", "service": "monitor"}), 200
+
         @self.app.route('/monitor/status', methods=['GET'])
         def status():
             return jsonify(self.server_statuses)
@@ -57,14 +78,14 @@ class Monitor:
 
         # Periodically trigger AI prediction via a side-effect poll
         try:
-            requests.get(f"http://localhost:{AI_SERVICE_PORT}/predict/{server_id}", timeout=1)
+            requests.get(f"{settings.AI_SERVICE_URL}/predict/{server_id}", timeout=1)
         except Exception:
             pass
 
-        if metrics.get('cpu', 0) > HIGH_LOAD_THRESHOLD:
+        if metrics.get('cpu', 0) > settings.HIGH_LOAD_THRESHOLD:
             self._report_fault(server_id, "high_cpu", f"CPU load {metrics['cpu']} exceeded threshold")
 
-        if metrics.get('memory', 0) > HIGH_LOAD_THRESHOLD:
+        if metrics.get('memory', 0) > settings.HIGH_LOAD_THRESHOLD:
             self._report_fault(server_id, "high_memory", f"Memory load {metrics['memory']} exceeded threshold")
 
         latencies = [h.get('latency_ms', 0) for h in history[-10:]]
@@ -85,10 +106,21 @@ class Monitor:
 
     def _poll_servers(self):
         """Background loop to poll all servers for health metrics."""
+        # Wait for dependencies
+        wait_for_service(settings.SERVER1_URL, "Server 1")
+        wait_for_service(settings.SERVER2_URL, "Server 2")
+        wait_for_service(settings.SERVER3_URL, "Server 3")
+
+        server_urls = {
+            "server1": settings.SERVER1_URL,
+            "server2": settings.SERVER2_URL,
+            "server3": settings.SERVER3_URL
+        }
+
         while True:
-            for sid, port in SERVER_PORTS.items():
+            for sid, url in server_urls.items():
                 try:
-                    response = requests.get(f"http://localhost:{port}/health", timeout=2)
+                    response = requests.get(f"{url}/health", timeout=2)
                     if response.status_code == 200:
                         metrics = response.json()
                         self.server_statuses[sid] = {"status": metrics['status'], "metrics": metrics}
@@ -100,12 +132,12 @@ class Monitor:
                         self.server_statuses[sid]["status"] = "error"
                 except Exception:
                     self.server_statuses[sid]["status"] = "down"
-            time.sleep(MONITOR_INTERVAL_SECONDS)
+            time.sleep(settings.MONITOR_INTERVAL_SECONDS)
 
     def run(self):
         """Starts the monitor polling thread and uvicorn/flask app."""
         threading.Thread(target=self._poll_servers, daemon=True).start()
-        self.app.run(port=MONITOR_PORT, debug=False)
+        self.app.run(host="0.0.0.0", port=settings.get_port(settings.MONITOR_PORT), debug=False)
 
 if __name__ == "__main__":
     monitor = Monitor()

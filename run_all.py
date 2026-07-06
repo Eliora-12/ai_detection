@@ -56,6 +56,7 @@ if __name__ == "__main__":
     # Ensure models are trained
     if not os.path.exists("python/ai/model/fault_classifier.pkl"):
         print("Training models...")
+        # Since we modified the name inside train.py and it calls train_and_save_models() in main, this is still fine.
         subprocess.run([sys.executable, "python/ai/train.py"], env={"PYTHONPATH": os.getcwd()})
 
     from python.config.settings import SERVER_PORTS, MONITOR_PORT, AI_SERVICE_PORT, LOAD_BALANCER_PORT, RECOVERY_PORT
